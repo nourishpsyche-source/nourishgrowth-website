@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NourishGrowth Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --sage: #4A7C59; --light: #f0f7f1; --white: #fff; --text: #2C2C2C; --muted: #888; --radius: 12px; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--light); color:var(--text); min-height:100vh; }
+  
+  /* LOGIN */
+  #login-screen { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+  .login-box { background:white; border-radius:20px; padding:2.5rem; width:360px; box-shadow:0 8px 40px rgba(74,124,89,0.15); text-align:center; }
+  .login-logo { font-size:1.8rem; font-weight:700; color:var(--sage); margin-bottom:0.5rem; }
+  .login-sub { color:var(--muted); font-size:0.9rem; margin-bottom:2rem; }
+  .login-box input { width:100%; padding:12px 16px; border:1.5px solid #ddd; border-radius:10px; font-size:0.95rem; font-family:'DM Sans',sans-serif; margin-bottom:1rem; outline:none; transition:border 0.2s; }
+  .login-box input:focus { border-color:var(--sage); }
+  .login-btn { width:100%; background:var(--sage); color:white; border:none; padding:13px; border-radius:10px; font-size:1rem; font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .login-btn:hover { background:#3a6447; }
+  .login-error { color:#e74c3c; font-size:0.85rem; margin-top:0.5rem; display:none; }
+
+  /* MAIN LAYOUT */
+  #admin-screen { display:none; }
+  .topbar { background:white; padding:0 2rem; height:60px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #e8f0e9; position:fixed; top:0; width:100%; z-index:100; }
+  .topbar-logo { font-weight:700; color:var(--sage); font-size:1.1rem; }
+  .topbar-user { display:flex; align-items:center; gap:1rem; font-size:0.85rem; color:var(--muted); }
+  .logout-btn { background:none; border:1.5px solid #ddd; padding:6px 14px; border-radius:20px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.82rem; }
+  .sidebar { position:fixed; top:60px; left:0; width:220px; height:calc(100vh - 60px); background:white; border-right:1px solid #e8f0e9; padding:1.5rem 0; overflow-y:auto; }
+  .sidebar-item { display:flex; align-items:center; gap:10px; padding:10px 1.5rem; cursor:pointer; font-size:0.9rem; border-radius:0; transition:background 0.15s; color:var(--text); text-decoration:none; }
+  .sidebar-item:hover, .sidebar-item.active { background:var(--light); color:var(--sage); font-weight:500; }
+  .sidebar-item.active { border-right:3px solid var(--sage); }
+  .main { margin-left:220px; padding-top:60px; min-height:100vh; }
+  .content { padding:2rem; }
+
+  /* PANELS */
+  .panel { display:none; }
+  .panel.active { display:block; }
+  .panel-title { font-size:1.3rem; font-weight:700; margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center; }
+  .btn-new { background:var(--sage); color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:600; font-size:0.9rem; }
+  
+  /* CARDS GRID */
+  .items-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:1rem; }
+  .item-card { background:white; border-radius:var(--radius); padding:1.25rem; border:1.5px solid #e8f0e9; cursor:pointer; transition:all 0.2s; }
+  .item-card:hover { border-color:var(--sage); box-shadow:0 4px 20px rgba(74,124,89,0.1); }
+  .item-card h4 { font-size:0.95rem; margin-bottom:0.4rem; }
+  .item-card p { font-size:0.8rem; color:var(--muted); }
+  .item-badge { display:inline-block; font-size:0.72rem; padding:2px 8px; border-radius:20px; background:var(--light); color:var(--sage); font-weight:600; margin-bottom:0.5rem; }
+  .item-badge.free { background:#e8f5e9; }
+  .item-badge.paid { background:#fff3e0; color:#e65100; }
+  .empty-state { text-align:center; padding:3rem; color:var(--muted); }
+  .empty-state .emoji { font-size:3rem; margin-bottom:1rem; }
+
+  /* FORM */
+  .form-back { background:none; border:none; cursor:pointer; color:var(--sage); font-family:'DM Sans',sans-serif; font-size:0.9rem; margin-bottom:1rem; display:flex; align-items:center; gap:6px; padding:0; }
+  .form-card { background:white; border-radius:var(--radius); padding:1.75rem; max-width:680px; border:1.5px solid #e8f0e9; }
+  .form-group { margin-bottom:1.25rem; }
+  .form-group label { display:block; font-size:0.85rem; font-weight:600; margin-bottom:6px; color:#444; }
+  .form-group input, .form-group textarea, .form-group select { width:100%; padding:10px 14px; border:1.5px solid #ddd; border-radius:8px; font-size:0.9rem; font-family:'DM Sans',sans-serif; outline:none; transition:border 0.2s; }
+  .form-group input:focus, .form-group textarea:focus { border-color:var(--sage); }
+  .form-group textarea { min-height:100px; resize:vertical; }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+  .toggle-row { display:flex; align-items:center; gap:12px; }
+  .toggle { width:44px; height:24px; background:#ddd; border-radius:20px; position:relative; cursor:pointer; transition:background 0.2s; border:none; }
+  .toggle.on { background:var(--sage); }
+  .toggle::after { content:''; position:absolute; width:18px; height:18px; background:white; border-radius:50%; top:3px; left:3px; transition:left 0.2s; }
+  .toggle.on::after { left:23px; }
+  .form-actions { display:flex; gap:1rem; margin-top:1.5rem; }
+  .btn-save { background:var(--sage); color:white; border:none; padding:12px 28px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:600; }
+  .btn-delete { background:none; border:1.5px solid #e74c3c; color:#e74c3c; padding:12px 20px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .save-msg { display:none; background:#e8f5e9; color:#2e7d32; padding:10px 16px; border-radius:8px; margin-top:1rem; font-size:0.88rem; font-weight:500; }
+
+  /* GITHUB TOKEN SETUP */
+  .token-notice { background:#fff8e1; border:1.5px solid #ffe082; border-radius:12px; padding:1.25rem 1.5rem; margin-bottom:1.5rem; font-size:0.88rem; }
+  .token-notice a { color:var(--sage); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🌿 NourishGrowth</div>
+    <div class="login-sub">Admin Panel</div>
+    <input type="password" id="admin-password" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')login()">
+    <button class="login-btn" onclick="login()">Login</button>
+    <div class="login-error" id="login-error">Incorrect password. Try again.</div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="admin-screen">
+  <div class="topbar">
+    <div class="topbar-logo">🌿 NourishGrowth Admin</div>
+    <div class="topbar-user">
+      <span>nourishpsyche@gmail.com</span>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="sidebar-item active" onclick="showPanel('worksheets',this)">📝 Worksheets</div>
+    <div class="sidebar-item" onclick="showPanel('articles',this)">✍️ Articles</div>
+    <div class="sidebar-item" onclick="showPanel('courses',this)">🎬 Video Courses</div>
+    <div class="sidebar-item" onclick="showPanel('flipbooks',this)">📖 Flipbooks</div>
+    <div class="sidebar-item" onclick="showPanel('reviews',this)">⭐ Reviews</div>
+    <div class="sidebar-item" onclick="showPanel('gallery',this)">📸 Images</div>
+    <div class="sidebar-item" onclick="showPanel('settings',this)">⚙️ Settings</div>
+    <div class="sidebar-item" onclick="showPanel('github',this)">🔑 GitHub Token</div>
+  </div>
+  <div class="main">
+    <div class="content">
+
+      <!-- GITHUB TOKEN PANEL -->
+      <div class="panel" id="panel-github">
+        <div class="panel-title">🔑 GitHub Access Token</div>
+        <div class="form-card">
+          <p style="margin-bottom:1rem;font-size:0.9rem;">To save content to your website, you need a GitHub Personal Access Token.</p>
+          <ol style="font-size:0.88rem;line-height:2;margin-left:1.2rem;margin-bottom:1.5rem;color:#555;">
+            <li>Go to <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--sage)">github.com/settings/tokens/new</a></li>
+            <li>Note: <strong>NourishGrowth CMS</strong></li>
+            <li>Expiration: <strong>No expiration</strong></li>
+            <li>Tick <strong>repo</strong> checkbox</li>
+            <li>Click <strong>Generate token</strong></li>
+            <li>Copy the token and paste below</li>
+          </ol>
+          <div class="form-group">
+            <label>GitHub Personal Access Token</label>
+            <input type="password" id="github-token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+          </div>
+          <button class="btn-save" onclick="saveToken()">Save Token</button>
+          <div class="save-msg" id="token-saved">✅ Token saved! You can now publish content.</div>
+        </div>
+      </div>
+
+      <!-- WORKSHEETS -->
+      <div class="panel active" id="panel-worksheets">
+        <div class="panel-title">📝 Worksheets <button class="btn-new" onclick="newItem('worksheets')">+ New Worksheet</button></div>
+        <div id="worksheets-list"></div>
+      </div>
+
+      <!-- ARTICLES -->
+      <div class="panel" id="panel-articles">
+        <div class="panel-title">✍️ Articles <button class="btn-new" onclick="newItem('articles')">+ New Article</button></div>
+        <div id="articles-list"></div>
+      </div>
+
+      <!-- COURSES -->
+      <div class="panel" id="panel-courses">
+        <div class="panel-title">🎬 Video Courses <button class="btn-new" onclick="newItem('courses')">+ New Course</button></div>
+        <div id="courses-list"></div>
+      </div>
+
+      <!-- FLIPBOOKS -->
+      <div class="panel" id="panel-flipbooks">
+        <div class="panel-title">📖 Flipbooks <button class="btn-new" onclick="newItem('flipbooks')">+ New Flipbook</button></div>
+        <div id="flipbooks-list"></div>
+      </div>
+
+      <!-- REVIEWS -->
+      <div class="panel" id="panel-reviews">
+        <div class="panel-title">⭐ Reviews <button class="btn-new" onclick="newItem('reviews')">+ New Review</button></div>
+        <div id="reviews-list"></div>
+      </div>
+
+      <!-- GALLERY -->
+      <div class="panel" id="panel-gallery">
+        <div class="panel-title">📸 Images <button class="btn-new" onclick="newItem('gallery')">+ New Image</button></div>
+        <div id="gallery-list"></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="panel" id="panel-settings">
+        <div class="panel-title">⚙️ Site Settings</div>
+        <div class="form-card">
+          <div class="form-row">
+            <div class="form-group"><label>Video Session Price</label><input id="s-video-price" placeholder="Rp 500.000"></div>
+            <div class="form-group"><label>Call Session Price</label><input id="s-call-price" placeholder="Rp 350.000"></div>
+          </div>
+          <div class="form-group"><label>Text Session Price</label><input id="s-text-price" placeholder="Rp 200.000"></div>
+          <div class="form-group"><label>Hero Quote</label><textarea id="s-hero-quote" placeholder="Quote text here"></textarea></div>
+          <div class="form-group"><label>Quote Author</label><input id="s-hero-author" placeholder="Name, Title"></div>
+          <div class="form-row">
+            <div class="form-group"><label>WhatsApp Number</label><input id="s-whatsapp" placeholder="628123456789"></div>
+            <div class="form-group"><label>Email</label><input id="s-email" placeholder="hello@nourishgrowth.com"></div>
+          </div>
+          <div class="form-group"><label>Instagram Handle</label><input id="s-instagram" placeholder="@nourishgrowth"></div>
+          <div class="form-actions">
+            <button class="btn-save" onclick="saveSettings()">💾 Save Settings</button>
+          </div>
+          <div class="save-msg" id="settings-saved">✅ Settings saved to website!</div>
+        </div>
+      </div>
+
+      <!-- ITEM FORM (shared) -->
+      <div class="panel" id="panel-form">
+        <button class="form-back" onclick="backToList()" id="form-back-btn">← Back</button>
+        <div class="panel-title" id="form-title">New Item</div>
+        <div class="form-card" id="form-fields"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const REPO = 'nourishpsyche-source/nourishgrowth-website';
+const BRANCH = 'main';
+const ADMIN_PASS = 'NourishAdmin2025!';
+
+let currentPanel = 'worksheets';
+let editingItem = null;
+
+// ===== AUTH =====
+function login() {
+  const pwd = document.getElementById('admin-password').value;
+  if (pwd === ADMIN_PASS) {
+    localStorage.setItem('ng_admin', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-screen').style.display = 'block';
+    loadPanel('worksheets');
+    checkToken();
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('ng_admin');
+  location.reload();
+}
+
+function checkToken() {
+  const t = localStorage.getItem('ng_token');
+  if (!t) {
+    setTimeout(() => { showPanel('github', document.querySelector('.sidebar-item:last-child')); }, 500);
+  }
+}
+
+function saveToken() {
+  const t = document.getElementById('github-token-input').value.trim();
+  if (t) {
+    localStorage.setItem('ng_token', t);
+    document.getElementById('token-saved').style.display = 'block';
+  }
+}
+
+// Auto-login if session exists
+window.onload = function() {
+  if (localStorage.getItem('ng_admin')) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-screen').style.display = 'block';
+    loadPanel('worksheets');
+    checkToken();
+  }
+};
+
+// ===== NAVIGATION =====
+function showPanel(name, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (el) el.classList.add('active');
+  currentPanel = name;
+  if (['worksheets','articles','courses','flipbooks','reviews','gallery'].includes(name)) loadPanel(name);
+  if (name === 'settings') loadSettings();
+}
+
+function backToList() {
+  showPanel(currentPanel, document.querySelector('.sidebar-item.active'));
+}
+
+// ===== GITHUB API =====
+function getToken() { return localStorage.getItem('ng_token') || ''; }
+
+async function ghGet(path) {
+  const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}?ref=${BRANCH}`, {
+    headers: { 'Authorization': 'token ' + getToken(), 'Accept': 'application/vnd.github.v3+json' }
+  });
+  if (!r.ok) return null;
+  return r.json();
+}
+
+async function ghPut(path, content, sha) {
+  const body = { message: `Update ${path}`, content: btoa(unescape(encodeURIComponent(content))), branch: BRANCH };
+  if (sha) body.sha = sha;
+  const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, {
+    method: 'PUT', headers: { 'Authorization': 'token ' + getToken(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return r.ok;
+}
+
+async function ghDelete(path, sha) {
+  const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`, {
+    method: 'DELETE', headers: { 'Authorization': 'token ' + getToken(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: `Delete ${path}`, sha, branch: BRANCH })
+  });
+  return r.ok;
+}
+
+async function ghList(folder) {
+  const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${folder}?ref=${BRANCH}`, {
+    headers: { 'Authorization': 'token ' + getToken() }
+  });
+  if (!r.ok) return [];
+  return r.json();
+}
+
+function parseFM(text) {
+  const m = text.match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return {};
+  const obj = {};
+  m[1].split('\n').forEach(l => {
+    const [k, ...v] = l.split(':');
+    if (k) obj[k.trim()] = v.join(':').trim().replace(/^["']|["']$/g,'');
+  });
+  return obj;
+}
+
+function toFM(obj) {
+  const lines = Object.entries(obj).map(([k,v]) => `${k}: "${v}"`);
+  return `---\n${lines.join('\n')}\n---\n`;
+}
+
+// ===== LOAD PANELS =====
+const folderMap = { worksheets:'_worksheets', articles:'_articles', courses:'_courses', flipbooks:'_flipbooks', reviews:'_reviews', gallery:'_gallery' };
+
+async function loadPanel(name) {
+  const folder = folderMap[name];
+  const listEl = document.getElementById(name + '-list');
+  listEl.innerHTML = '<div style="padding:2rem;color:var(--muted);">Loading...</div>';
+  const files = await ghList(folder);
+  if (!files.length) {
+    listEl.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><p>No ${name} yet. Click "+ New" to add one!</p></div>`;
+    return;
+  }
+  const items = await Promise.all(files.filter(f=>f.name.endsWith('.md')).map(async f => {
+    const r = await fetch(f.download_url);
+    const text = await r.text();
+    return { ...parseFM(text), _path: f.path, _sha: f.sha, _raw: text };
+  }));
+  listEl.innerHTML = `<div class="items-grid">${items.map(it => renderCard(name, it)).join('')}</div>`;
+}
+
+function renderCard(type, it) {
+  const id = encodeURIComponent(JSON.stringify({path:it._path,sha:it._sha}));
+  let badge = '';
+  if (type==='worksheets') badge = `<span class="item-badge ${it.free==='true'?'free':'paid'}">${it.free==='true'?'🎁 FREE':'💰 '+it.price}</span>`;
+  if (type==='reviews') badge = `<span class="item-badge ${it.approved==='true'?'free':'paid'}">${it.approved==='true'?'✅ Approved':'⏳ Pending'}</span>`;
+  return `<div class="item-card" onclick="editItem('${type}','${id}')">
+    ${badge}
+    <h4>${it.title||it.name||'Untitled'}</h4>
+    <p>${it.description||it.summary||it.body||''}</p>
+  </div>`;
+}
+
+// ===== FORMS =====
+const formDefs = {
+  worksheets: [
+    {id:'title',label:'Title',type:'text',required:true},
+    {id:'code',label:'Code (e.g. WS-005)',type:'text'},
+    {id:'price',label:'Price (e.g. Rp 45.000)',type:'text'},
+    {id:'free',label:'Is Free?',type:'toggle'},
+    {id:'description',label:'Description',type:'textarea'},
+    {id:'tags',label:'Tags (comma separated)',type:'text'},
+  ],
+  articles: [
+    {id:'title',label:'Title',type:'text',required:true},
+    {id:'date',label:'Publish Date',type:'text',placeholder:'2025-03-01'},
+    {id:'readtime',label:'Read Time (e.g. 5 min read)',type:'text'},
+    {id:'summary',label:'Summary',type:'textarea'},
+  ],
+  courses: [
+    {id:'title',label:'Title',type:'text',required:true},
+    {id:'code',label:'Code (e.g. CRS-04)',type:'text'},
+    {id:'price',label:'Price',type:'text'},
+    {id:'lessons',label:'Number of Lessons',type:'text'},
+    {id:'duration',label:'Duration (e.g. 3 Hours)',type:'text'},
+    {id:'description',label:'Description',type:'textarea'},
+    {id:'video_url',label:'Video URL',type:'text'},
+  ],
+  flipbooks: [
+    {id:'title',label:'Title',type:'text',required:true},
+    {id:'tag',label:'Tag (e.g. Child Dev)',type:'text'},
+    {id:'description',label:'Description',type:'textarea'},
+    {id:'url',label:'Flipbook URL',type:'text'},
+  ],
+  reviews: [
+    {id:'name',label:'Reviewer Name',type:'text',required:true},
+    {id:'code',label:'Product Code',type:'text'},
+    {id:'rating',label:'Rating',type:'select',options:['5','4','3']},
+    {id:'body',label:'Review Text',type:'textarea',required:true},
+    {id:'approved',label:'Approved (show on website)',type:'toggle'},
+  ],
+  gallery: [
+    {id:'title',label:'Image Title',type:'text',required:true},
+    {id:'caption',label:'Caption',type:'text'},
+  ],
+};
+
+function newItem(type) {
+  currentPanel = type;
+  editingItem = null;
+  renderForm(type, {});
+}
+
+function editItem(type, encodedId) {
+  const {path, sha} = JSON.parse(decodeURIComponent(encodedId));
+  currentPanel = type;
+  // fetch fresh
+  ghGet(path).then(f => {
+    const text = atob(f.content);
+    const data = parseFM(text);
+    data._path = path;
+    data._sha = f.sha;
+    editingItem = data;
+    renderForm(type, data);
+  });
+}
+
+function renderForm(type, data) {
+  const fields = formDefs[type];
+  const isNew = !data._path;
+  document.getElementById('form-title').textContent = (isNew ? 'New ' : 'Edit ') + type.charAt(0).toUpperCase()+type.slice(1,-1);
+  document.getElementById('form-back-btn').textContent = '← Back to ' + type.charAt(0).toUpperCase()+type.slice(1);
+
+  let html = '';
+  fields.forEach(f => {
+    if (f.type === 'textarea') {
+      html += `<div class="form-group"><label>${f.label}</label><textarea id="f-${f.id}" placeholder="${f.placeholder||''}">${data[f.id]||''}</textarea></div>`;
+    } else if (f.type === 'toggle') {
+      const on = data[f.id] === 'true';
+      html += `<div class="form-group"><label>${f.label}</label><div class="toggle-row"><button type="button" class="toggle ${on?'on':''}" id="f-${f.id}" onclick="this.classList.toggle('on')"></button><span id="f-${f.id}-label">${on?'Yes':'No'}</span></div></div>`;
+    } else if (f.type === 'select') {
+      const opts = f.options.map(o => `<option ${data[f.id]===o?'selected':''}>${o}</option>`).join('');
+      html += `<div class="form-group"><label>${f.label}</label><select id="f-${f.id}">${opts}</select></div>`;
+    } else {
+      html += `<div class="form-group"><label>${f.label}</label><input type="text" id="f-${f.id}" value="${data[f.id]||''}" placeholder="${f.placeholder||''}"></div>`;
+    }
+  });
+
+  html += `<div class="form-actions">
+    <button class="btn-save" onclick="saveItem('${type}')">💾 Save & Publish</button>
+    ${!isNew ? `<button class="btn-delete" onclick="deleteItem('${type}')">🗑 Delete</button>` : ''}
+  </div>
+  <div class="save-msg" id="form-save-msg">✅ Published! Changes will appear on website shortly.</div>`;
+
+  document.getElementById('form-fields').innerHTML = html;
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-form').classList.add('active');
+}
+
+async function saveItem(type) {
+  const fields = formDefs[type];
+  const data = {};
+  fields.forEach(f => {
+    const el = document.getElementById('f-' + f.id);
+    if (!el) return;
+    if (f.type === 'toggle') data[f.id] = el.classList.contains('on') ? 'true' : 'false';
+    else data[f.id] = el.value;
+  });
+
+  const slug = (data.title||'item').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const folder = folderMap[type];
+  const path = editingItem ? editingItem._path : `${folder}/${slug}-${Date.now()}.md`;
+  const sha = editingItem ? editingItem._sha : undefined;
+  const content = toFM(data);
+
+  const ok = await ghPut(path, content, sha);
+  if (ok) {
+    document.getElementById('form-save-msg').style.display = 'block';
+    if (!editingItem) {
+      editingItem = { _path: path };
+      // fetch sha for future edits
+      const f = await ghGet(path);
+      if (f) editingItem._sha = f.sha;
+    }
+  } else {
+    alert('❌ Save failed. Please check your GitHub token in the 🔑 GitHub Token section.');
+  }
+}
+
+async function deleteItem(type) {
+  if (!confirm('Delete this item? This cannot be undone.')) return;
+  const ok = await ghDelete(editingItem._path, editingItem._sha);
+  if (ok) backToList();
+  else alert('Delete failed. Check your GitHub token.');
+}
+
+// ===== SETTINGS =====
+async function loadSettings() {
+  const f = await ghGet('_settings/counseling.md');
+  if (f) {
+    const d = parseFM(atob(f.content));
+    if (d.video_price) document.getElementById('s-video-price').value = d.video_price;
+    if (d.call_price) document.getElementById('s-call-price').value = d.call_price;
+    if (d.text_price) document.getElementById('s-text-price').value = d.text_price;
+  }
+  const g = await ghGet('_settings/general.md');
+  if (g) {
+    const d = parseFM(atob(g.content));
+    if (d.hero_quote) document.getElementById('s-hero-quote').value = d.hero_quote;
+    if (d.hero_author) document.getElementById('s-hero-author').value = d.hero_author;
+    if (d.whatsapp) document.getElementById('s-whatsapp').value = d.whatsapp;
+    if (d.email) document.getElementById('s-email').value = d.email;
+    if (d.instagram) document.getElementById('s-instagram').value = d.instagram;
+  }
+}
+
+async function saveSettings() {
+  const cData = { video_price: document.getElementById('s-video-price').value, call_price: document.getElementById('s-call-price').value, text_price: document.getElementById('s-text-price').value };
+  const gData = { hero_quote: document.getElementById('s-hero-quote').value, hero_author: document.getElementById('s-hero-author').value, whatsapp: document.getElementById('s-whatsapp').value, email: document.getElementById('s-email').value, instagram: document.getElementById('s-instagram').value };
+
+  const cf = await ghGet('_settings/counseling.md');
+  const gf = await ghGet('_settings/general.md');
+  await ghPut('_settings/counseling.md', toFM(cData), cf?.sha);
+  await ghPut('_settings/general.md', toFM(gData), gf?.sha);
+  document.getElementById('settings-saved').style.display = 'block';
+}
+</script>
+</body>
+</html>
