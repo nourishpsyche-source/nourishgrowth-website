@@ -93,9 +93,9 @@ collections:
         label: "💬 Counseling Prices"
         file: "_settings/counseling.md"
         fields:
-          - {label: "Video Session Price", name: "video_price", widget: "string", default: "Rp 500.000"}
-          - {label: "Call Session Price", name: "call_price", widget: "string", default: "Rp 350.000"}
-          - {label: "Text Session Price", name: "text_price", widget: "string", default: "Rp 200.000"}
+          - {label: "Video Session Price", name: "video_price", widget: "string"}
+          - {label: "Call Session Price", name: "call_price", widget: "string"}
+          - {label: "Text Session Price", name: "text_price", widget: "string"}
       - name: "general"
         label: "🌐 General Info"
         file: "_settings/general.md"
