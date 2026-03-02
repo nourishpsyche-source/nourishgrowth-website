@@ -57,9 +57,16 @@
   .btn-save { background:var(--sage); color:white; border:none; padding:12px 28px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:600; }
   .btn-delete { background:none; border:1.5px solid #e74c3c; color:#e74c3c; padding:12px 20px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; }
   .save-msg { display:none; background:#e8f5e9; color:#2e7d32; padding:10px 16px; border-radius:8px; margin-top:1rem; font-size:0.88rem; font-weight:500; }
+  .upload-box { border:2px dashed #c8e6c9; border-radius:8px; padding:1.5rem; text-align:center; cursor:pointer; transition:border 0.2s; background:#f9fdf9; }
+  .upload-box:hover { border-color:var(--sage); }
+  .upload-box input[type=file] { display:none; }
+  .upload-btn { background:var(--sage); color:white; border:none; padding:8px 18px; border-radius:6px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.85rem; margin-top:0.5rem; }
+  .upload-progress { display:none; margin-top:0.75rem; font-size:0.85rem; color:var(--sage); font-weight:500; }
+  .file-preview { margin-top:0.5rem; font-size:0.82rem; color:#555; word-break:break-all; }
 </style>
 </head>
 <body>
+
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">🌿 NourishGrowth</div>
@@ -69,6 +76,7 @@
     <div class="login-error" id="login-error">Incorrect password. Try again.</div>
   </div>
 </div>
+
 <div id="admin-screen">
   <div class="topbar">
     <div class="topbar-logo">🌿 NourishGrowth Admin</div>
@@ -88,10 +96,11 @@
     <div class="sidebar-item" onclick="showPanel('github',this)">🔑 GitHub Token</div>
   </div>
   <div class="main"><div class="content">
+
     <div class="panel" id="panel-github">
       <div class="panel-title">🔑 GitHub Access Token</div>
       <div class="form-card">
-        <p style="margin-bottom:1rem;font-size:0.9rem;">Paste your GitHub Personal Access Token to enable saving content.</p>
+        <p style="margin-bottom:1rem;font-size:0.9rem;">Paste your GitHub Personal Access Token to enable saving and uploading files.</p>
         <ol style="font-size:0.88rem;line-height:2;margin-left:1.2rem;margin-bottom:1.5rem;color:#555;">
           <li>Go to <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--sage)">github.com/settings/tokens/new</a></li>
           <li>Note: <strong>NourishGrowth CMS</strong></li>
@@ -107,6 +116,7 @@
         <div class="save-msg" id="token-saved">✅ Token saved!</div>
       </div>
     </div>
+
     <div class="panel active" id="panel-worksheets">
       <div class="panel-title">📝 Worksheets <button class="btn-new" onclick="newItem('worksheets')">+ New Worksheet</button></div>
       <div id="worksheets-list"></div>
@@ -131,6 +141,7 @@
       <div class="panel-title">📸 Images <button class="btn-new" onclick="newItem('gallery')">+ New Image</button></div>
       <div id="gallery-list"></div>
     </div>
+
     <div class="panel" id="panel-settings">
       <div class="panel-title">⚙️ Site Settings</div>
       <div class="form-card">
@@ -150,19 +161,24 @@
         <div class="save-msg" id="settings-saved">✅ Settings saved!</div>
       </div>
     </div>
+
     <div class="panel" id="panel-form">
       <button class="form-back" onclick="backToList()" id="form-back-btn">← Back</button>
       <div class="panel-title" id="form-title">New Item</div>
       <div class="form-card" id="form-fields"></div>
     </div>
+
   </div></div>
 </div>
+
 <script>
 const REPO='nourishpsyche-source/nourishgrowth-website';
 const BRANCH='main';
 const ADMIN_PASS='NourishAdmin2025!';
+const BASE_URL='https://nourishpsyche-source.github.io/nourishgrowth-website';
 let currentPanel='worksheets';
 let editingItem=null;
+
 function login(){
   if(document.getElementById('admin-password').value===ADMIN_PASS){
     localStorage.setItem('ng_admin','1');
@@ -175,6 +191,7 @@ function login(){
 function logout(){localStorage.removeItem('ng_admin');location.reload();}
 function saveToken(){const t=document.getElementById('github-token-input').value.trim();if(t){localStorage.setItem('ng_token',t);document.getElementById('token-saved').style.display='block';}}
 window.onload=function(){if(localStorage.getItem('ng_admin')){document.getElementById('login-screen').style.display='none';document.getElementById('admin-screen').style.display='block';loadPanel('worksheets');}};
+
 function showPanel(name,el){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
@@ -186,22 +203,53 @@ function showPanel(name,el){
 }
 function backToList(){showPanel(currentPanel,document.querySelector('.sidebar-item.active'));}
 function getToken(){return localStorage.getItem('ng_token')||'';}
-async function ghGet(path){const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${path}?ref=${BRANCH}`,{headers:{'Authorization':'token '+getToken()}});if(!r.ok)return null;return r.json();}
-async function ghPut(path,content,sha){const body={message:`Update ${path}`,content:btoa(unescape(encodeURIComponent(content))),branch:BRANCH};if(sha)body.sha=sha;const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`,{method:'PUT',headers:{'Authorization':'token '+getToken(),'Content-Type':'application/json'},body:JSON.stringify(body)});return r.ok;}
-async function ghDelete(path,sha){const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`,{method:'DELETE',headers:{'Authorization':'token '+getToken(),'Content-Type':'application/json'},body:JSON.stringify({message:`Delete ${path}`,sha,branch:BRANCH})});return r.ok;}
-async function ghList(folder){const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${folder}?ref=${BRANCH}`,{headers:{'Authorization':'token '+getToken()}});if(!r.ok)return[];return r.json();}
-function parseFM(text){const m=text.match(/^---\n([\s\S]*?)\n---/);if(!m)return{};const obj={};m[1].split('\n').forEach(l=>{const[k,...v]=l.split(':');if(k)obj[k.trim()]=v.join(':').trim().replace(/^["']|["']$/g,'');});return obj;}
-function toFM(obj){return`---\n${Object.entries(obj).map(([k,v])=>`${k}: "${v}"`).join('\n')}\n---\n`;}
+
+async function ghGet(path){
+  const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${path}?ref=${BRANCH}`,{headers:{'Authorization':'token '+getToken()}});
+  if(!r.ok)return null;return r.json();
+}
+async function ghPut(path,content,sha){
+  const body={message:`Update ${path}`,content:btoa(unescape(encodeURIComponent(content))),branch:BRANCH};
+  if(sha)body.sha=sha;
+  const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`,{method:'PUT',headers:{'Authorization':'token '+getToken(),'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return r.ok;
+}
+async function ghPutBinary(path,base64content,sha){
+  const body={message:`Upload ${path}`,content:base64content,branch:BRANCH};
+  if(sha)body.sha=sha;
+  const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`,{method:'PUT',headers:{'Authorization':'token '+getToken(),'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return r.ok;
+}
+async function ghDelete(path,sha){
+  const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`,{method:'DELETE',headers:{'Authorization':'token '+getToken(),'Content-Type':'application/json'},body:JSON.stringify({message:`Delete ${path}`,sha,branch:BRANCH})});
+  return r.ok;
+}
+async function ghList(folder){
+  const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${folder}?ref=${BRANCH}`,{headers:{'Authorization':'token '+getToken()}});
+  if(!r.ok)return[];return r.json();
+}
+
+function parseFM(text){
+  const m=text.match(/^---\n([\s\S]*?)\n---/);if(!m)return{};
+  const obj={};
+  m[1].split('\n').forEach(l=>{const[k,...v]=l.split(':');if(k)obj[k.trim()]=v.join(':').trim().replace(/^["']|["']$/g,'');});
+  return obj;
+}
+function toFM(obj){return`---\n${Object.entries(obj).map(([k,v])=>`${k}: "${String(v).replace(/"/g,"'")}"`).join('\n')}\n---\n`;}
+
 const folderMap={worksheets:'_worksheets',articles:'_articles',courses:'_courses',flipbooks:'_flipbooks',reviews:'_reviews',gallery:'_gallery'};
+
 async function loadPanel(name){
   const listEl=document.getElementById(name+'-list');
   listEl.innerHTML='<div style="padding:2rem;color:var(--muted)">Loading...</div>';
   const files=await ghList(folderMap[name]);
   if(!files.length){listEl.innerHTML=`<div class="empty-state"><div class="emoji">📭</div><p>No ${name} yet. Click "+ New" to add one!</p></div>`;return;}
-  const items=await Promise.all(files.filter(f=>f.name.endsWith('.md')).map(async f=>{const r=await fetch(f.download_url);const text=await r.text();return{...parseFM(text),_path:f.path,_sha:f.sha};}));
+  const mdFiles=files.filter(f=>f.name.endsWith('.md'));
+  if(!mdFiles.length){listEl.innerHTML=`<div class="empty-state"><div class="emoji">📭</div><p>No ${name} yet.</p></div>`;return;}
+  const items=await Promise.all(mdFiles.map(async f=>{const r=await fetch(f.download_url);const text=await r.text();return{...parseFM(text),_path:f.path,_sha:f.sha};}));
   listEl.innerHTML=`<div class="items-grid">${items.map(it=>{
     let badge='';
-    if(name==='worksheets')badge=`<span class="item-badge">${it.free==='true'?'🎁 FREE':'💰 '+it.price}</span>`;
+    if(name==='worksheets')badge=`<span class="item-badge">${String(it.free).toLowerCase()==='true'?'🎁 FREE':'💰 '+(it.price||'')}</span>`;
     if(name==='reviews')badge=`<span class="item-badge">${it.approved==='true'?'✅ Approved':'⏳ Pending'}</span>`;
     const id=encodeURIComponent(JSON.stringify({path:it._path,sha:it._sha}));
     return`<div class="item-card" onclick="editItem('${name}','${id}')">
@@ -209,54 +257,178 @@ async function loadPanel(name){
       <p>${(it.description||it.summary||it.body||'').substring(0,80)}</p></div>`;
   }).join('')}</div>`;
 }
+
+// Upload file to GitHub uploads/ folder
+async function uploadFile(file, progressEl, previewEl) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result.split(',')[1];
+      const filename = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const path = `uploads/${filename}`;
+      if(progressEl) progressEl.style.display = 'block';
+      if(progressEl) progressEl.textContent = '⏳ Uploading...';
+      const existing = await ghGet(path);
+      const ok = await ghPutBinary(path, base64, existing?.sha);
+      if(ok) {
+        const url = `${BASE_URL}/uploads/${filename}`;
+        if(progressEl) progressEl.textContent = '✅ Uploaded!';
+        if(previewEl) previewEl.textContent = url;
+        resolve(url);
+      } else {
+        if(progressEl) progressEl.textContent = '❌ Upload failed. Check GitHub token.';
+        resolve('');
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 const formDefs={
-  worksheets:[{id:'title',label:'Title',type:'text'},{id:'code',label:'Code',type:'text'},{id:'price',label:'Price',type:'text'},{id:'free',label:'Is Free?',type:'toggle'},{id:'description',label:'Description',type:'textarea'},{id:'tags',label:'Tags (comma separated)',type:'text'}],
-  articles:[{id:'title',label:'Title',type:'text'},{id:'date',label:'Date (e.g. 2025-03-01)',type:'text'},{id:'readtime',label:'Read Time',type:'text'},{id:'summary',label:'Summary',type:'textarea'}],
-  courses:[{id:'title',label:'Title',type:'text'},{id:'code',label:'Code',type:'text'},{id:'price',label:'Price',type:'text'},{id:'lessons',label:'Lessons',type:'text'},{id:'duration',label:'Duration',type:'text'},{id:'description',label:'Description',type:'textarea'},{id:'video_url',label:'Video URL',type:'text'}],
-  flipbooks:[{id:'title',label:'Title',type:'text'},{id:'tag',label:'Tag',type:'text'},{id:'description',label:'Description',type:'textarea'},{id:'url',label:'Flipbook URL',type:'text'}],
-  reviews:[{id:'name',label:'Name',type:'text'},{id:'code',label:'Product Code',type:'text'},{id:'rating',label:'Rating',type:'select',options:['5','4','3']},{id:'body',label:'Review Text',type:'textarea'},{id:'approved',label:'Approved',type:'toggle'}],
-  gallery:[{id:'title',label:'Title',type:'text'},{id:'caption',label:'Caption',type:'text'}],
+  worksheets:[
+    {id:'title',label:'Title',type:'text'},
+    {id:'code',label:'Code (e.g. WS-005)',type:'text'},
+    {id:'price',label:'Price (e.g. Rp 45.000)',type:'text'},
+    {id:'free',label:'Is Free?',type:'toggle'},
+    {id:'description',label:'Description',type:'textarea'},
+    {id:'tags',label:'Tags (comma separated)',type:'text'},
+    {id:'file',label:'PDF File',type:'fileupload',accept:'.pdf',placeholder:'Upload PDF or paste URL'},
+  ],
+  articles:[
+    {id:'title',label:'Title',type:'text'},
+    {id:'date',label:'Date (e.g. 2025-03-01)',type:'text'},
+    {id:'readtime',label:'Read Time (e.g. 5 min read)',type:'text'},
+    {id:'summary',label:'Summary',type:'textarea'},
+    {id:'image',label:'Cover Image',type:'fileupload',accept:'image/*',placeholder:'Upload image or paste URL'},
+  ],
+  courses:[
+    {id:'title',label:'Title',type:'text'},
+    {id:'code',label:'Code (e.g. CRS-04)',type:'text'},
+    {id:'price',label:'Price',type:'text'},
+    {id:'lessons',label:'Number of Lessons',type:'text'},
+    {id:'duration',label:'Duration (e.g. 3 Hours)',type:'text'},
+    {id:'description',label:'Description',type:'textarea'},
+    {id:'video_url',label:'Video URL',type:'text'},
+    {id:'thumbnail',label:'Thumbnail Image',type:'fileupload',accept:'image/*',placeholder:'Upload image or paste URL'},
+  ],
+  flipbooks:[
+    {id:'title',label:'Title',type:'text'},
+    {id:'tag',label:'Tag (e.g. Child Dev)',type:'text'},
+    {id:'description',label:'Description',type:'textarea'},
+    {id:'url',label:'Flipbook URL',type:'text'},
+    {id:'image',label:'Cover Image',type:'fileupload',accept:'image/*',placeholder:'Upload image or paste URL'},
+  ],
+  reviews:[
+    {id:'name',label:'Reviewer Name',type:'text'},
+    {id:'code',label:'Product Code',type:'text'},
+    {id:'rating',label:'Rating',type:'select',options:['5','4','3']},
+    {id:'body',label:'Review Text',type:'textarea'},
+    {id:'approved',label:'Approved (show on website)',type:'toggle'},
+  ],
+  gallery:[
+    {id:'title',label:'Title',type:'text'},
+    {id:'image',label:'Image',type:'fileupload',accept:'image/*',placeholder:'Upload image or paste URL'},
+    {id:'caption',label:'Caption',type:'text'},
+  ],
 };
+
 function newItem(type){currentPanel=type;editingItem=null;renderForm(type,{});}
 function editItem(type,encodedId){
   const{path,sha}=JSON.parse(decodeURIComponent(encodedId));
   currentPanel=type;
   ghGet(path).then(f=>{const data={...parseFM(atob(f.content)),_path:path,_sha:f.sha};editingItem=data;renderForm(type,data);});
 }
+
 function renderForm(type,data){
   const isNew=!data._path;
-  document.getElementById('form-title').textContent=(isNew?'New ':'Edit ')+type.slice(0,-1);
+  document.getElementById('form-title').textContent=(isNew?'New ':'Edit ')+type.slice(0,-1).charAt(0).toUpperCase()+type.slice(1,-1).slice(1);
   let html='';
   formDefs[type].forEach(f=>{
-    if(f.type==='textarea')html+=`<div class="form-group"><label>${f.label}</label><textarea id="f-${f.id}">${data[f.id]||''}</textarea></div>`;
-    else if(f.type==='toggle'){const on=data[f.id]==='true';html+=`<div class="form-group"><label>${f.label}</label><div class="toggle-row"><button type="button" class="toggle ${on?'on':''}" id="f-${f.id}" onclick="this.classList.toggle('on')"></button><span>${on?'Yes':'No'}</span></div></div>`;}
-    else if(f.type==='select'){html+=`<div class="form-group"><label>${f.label}</label><select id="f-${f.id}">${f.options.map(o=>`<option ${data[f.id]===o?'selected':''}>${o}</option>`).join('')}</select></div>`;}
-    else html+=`<div class="form-group"><label>${f.label}</label><input type="text" id="f-${f.id}" value="${data[f.id]||''}"></div>`;
+    if(f.type==='textarea'){
+      html+=`<div class="form-group"><label>${f.label}</label><textarea id="f-${f.id}">${data[f.id]||''}</textarea></div>`;
+    } else if(f.type==='toggle'){
+      const on=String(data[f.id]).toLowerCase()==='true';
+      html+=`<div class="form-group"><label>${f.label}</label><div class="toggle-row"><button type="button" class="toggle ${on?'on':''}" id="f-${f.id}" onclick="this.classList.toggle('on')"></button><span>${on?'Yes':'No'}</span></div></div>`;
+    } else if(f.type==='select'){
+      html+=`<div class="form-group"><label>${f.label}</label><select id="f-${f.id}">${f.options.map(o=>`<option ${data[f.id]===o?'selected':''}>${o}</option>`).join('')}</select></div>`;
+    } else if(f.type==='fileupload'){
+      const current=data[f.id]||'';
+      html+=`<div class="form-group">
+        <label>${f.label}</label>
+        <div class="upload-box" onclick="document.getElementById('file-input-${f.id}').click()">
+          <input type="file" id="file-input-${f.id}" accept="${f.accept||'*'}" onchange="handleFileUpload('${f.id}',this)">
+          <div>📎 Click to upload ${f.accept==='.pdf'?'PDF':'image'}</div>
+          <button type="button" class="upload-btn">Choose File</button>
+        </div>
+        <div class="upload-progress" id="upload-progress-${f.id}"></div>
+        <div class="file-preview" id="file-preview-${f.id}">${current}</div>
+        <input type="text" id="f-${f.id}" value="${current}" placeholder="${f.placeholder||''}" style="margin-top:0.5rem;">
+      </div>`;
+    } else {
+      html+=`<div class="form-group"><label>${f.label}</label><input type="text" id="f-${f.id}" value="${data[f.id]||''}" placeholder="${f.placeholder||''}"></div>`;
+    }
   });
-  html+=`<div class="form-actions"><button class="btn-save" onclick="saveItem('${type}')">💾 Save & Publish</button>${!isNew?`<button class="btn-delete" onclick="deleteItem('${type}')">🗑 Delete</button>`:''}</div><div class="save-msg" id="form-save-msg">✅ Published! Appears on website shortly.</div>`;
+  html+=`<div class="form-actions">
+    <button class="btn-save" onclick="saveItem('${type}')">💾 Save & Publish</button>
+    ${!isNew?`<button class="btn-delete" onclick="deleteItem('${type}')">🗑 Delete</button>`:''}
+  </div>
+  <div class="save-msg" id="form-save-msg">✅ Published! Appears on website in ~1 minute.</div>`;
   document.getElementById('form-fields').innerHTML=html;
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-form').classList.add('active');
 }
+
+async function handleFileUpload(fieldId, input) {
+  const file = input.files[0];
+  if(!file) return;
+  const progressEl = document.getElementById('upload-progress-'+fieldId);
+  const previewEl = document.getElementById('file-preview-'+fieldId);
+  const urlInput = document.getElementById('f-'+fieldId);
+  const url = await uploadFile(file, progressEl, previewEl);
+  if(url) urlInput.value = url;
+}
+
 async function saveItem(type){
   const data={};
-  formDefs[type].forEach(f=>{const el=document.getElementById('f-'+f.id);if(!el)return;data[f.id]=f.type==='toggle'?el.classList.contains('on')?'true':'false':el.value;});
-  const slug=(data.title||'item').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  formDefs[type].forEach(f=>{
+    const el=document.getElementById('f-'+f.id);
+    if(!el)return;
+    data[f.id]=f.type==='toggle'?el.classList.contains('on')?'true':'false':el.value;
+  });
+  const slug=(data.title||'item').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
   const path=editingItem?editingItem._path:`${folderMap[type]}/${slug}-${Date.now()}.md`;
   const ok=await ghPut(path,toFM(data),editingItem?editingItem._sha:undefined);
-  if(ok){document.getElementById('form-save-msg').style.display='block';if(!editingItem){const f=await ghGet(path);if(f)editingItem={_path:path,_sha:f.sha};}}
-  else alert('Save failed! Go to GitHub Token section and check your token.');
+  if(ok){
+    document.getElementById('form-save-msg').style.display='block';
+    if(!editingItem){const f=await ghGet(path);if(f)editingItem={_path:path,_sha:f.sha};}
+  } else {
+    alert('Save failed! Go to 🔑 GitHub Token and check your token.');
+  }
 }
+
 async function deleteItem(type){
-  if(!confirm('Delete this item?'))return;
+  if(!confirm('Delete this item? Cannot be undone.'))return;
   if(await ghDelete(editingItem._path,editingItem._sha))backToList();
+  else alert('Delete failed. Check your GitHub token.');
 }
+
 async function loadSettings(){
   const f=await ghGet('_settings/counseling.md');
-  if(f){const d=parseFM(atob(f.content));['video_price','call_price','text_price'].forEach(k=>{if(d[k])document.getElementById('s-'+k.replace('_','-')).value=d[k];});}
+  if(f){const d=parseFM(atob(f.content));
+    document.getElementById('s-video-price').value=d.video_price||'';
+    document.getElementById('s-call-price').value=d.call_price||'';
+    document.getElementById('s-text-price').value=d.text_price||'';
+  }
   const g=await ghGet('_settings/general.md');
-  if(g){const d=parseFM(atob(g.content));['hero_quote','hero_author','whatsapp','email','instagram'].forEach(k=>{if(d[k])document.getElementById('s-'+k.replace('_','-')).value=d[k];});}
+  if(g){const d=parseFM(atob(g.content));
+    document.getElementById('s-hero-quote').value=d.hero_quote||'';
+    document.getElementById('s-hero-author').value=d.hero_author||'';
+    document.getElementById('s-whatsapp').value=d.whatsapp||'';
+    document.getElementById('s-email').value=d.email||'';
+    document.getElementById('s-instagram').value=d.instagram||'';
+  }
 }
+
 async function saveSettings(){
   const cf=await ghGet('_settings/counseling.md');
   const gf=await ghGet('_settings/general.md');
