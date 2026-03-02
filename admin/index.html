@@ -57,12 +57,6 @@
   .btn-save { background:var(--sage); color:white; border:none; padding:12px 28px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; font-weight:600; }
   .btn-delete { background:none; border:1.5px solid #e74c3c; color:#e74c3c; padding:12px 20px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif; }
   .save-msg { display:none; background:#e8f5e9; color:#2e7d32; padding:10px 16px; border-radius:8px; margin-top:1rem; font-size:0.88rem; font-weight:500; }
-  .upload-box { border:2px dashed #c8e6c9; border-radius:8px; padding:1.5rem; text-align:center; cursor:pointer; transition:border 0.2s; background:#f9fdf9; }
-  .upload-box:hover { border-color:var(--sage); }
-  .upload-box input[type=file] { display:none; }
-  .upload-btn { background:var(--sage); color:white; border:none; padding:8px 18px; border-radius:6px; cursor:pointer; font-family:'DM Sans',sans-serif; font-size:0.85rem; margin-top:0.5rem; }
-  .upload-progress { display:none; margin-top:0.75rem; font-size:0.85rem; color:var(--sage); font-weight:500; }
-  .file-preview { margin-top:0.5rem; font-size:0.82rem; color:#555; word-break:break-all; }
 </style>
 </head>
 <body>
@@ -214,8 +208,8 @@ async function ghPut(path,content,sha){
   const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`,{method:'PUT',headers:{'Authorization':'token '+getToken(),'Content-Type':'application/json'},body:JSON.stringify(body)});
   return r.ok;
 }
-async function ghPutBinary(path,base64content,sha){
-  const body={message:`Upload ${path}`,content:base64content,branch:BRANCH};
+async function ghPutBinary(path,base64,sha){
+  const body={message:`Upload ${path}`,content:base64,branch:BRANCH};
   if(sha)body.sha=sha;
   const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${path}`,{method:'PUT',headers:{'Authorization':'token '+getToken(),'Content-Type':'application/json'},body:JSON.stringify(body)});
   return r.ok;
@@ -228,15 +222,12 @@ async function ghList(folder){
   const r=await fetch(`https://api.github.com/repos/${REPO}/contents/${folder}?ref=${BRANCH}`,{headers:{'Authorization':'token '+getToken()}});
   if(!r.ok)return[];return r.json();
 }
-
 function parseFM(text){
   const m=text.match(/^---\n([\s\S]*?)\n---/);if(!m)return{};
-  const obj={};
-  m[1].split('\n').forEach(l=>{const[k,...v]=l.split(':');if(k)obj[k.trim()]=v.join(':').trim().replace(/^["']|["']$/g,'');});
+  const obj={};m[1].split('\n').forEach(l=>{const[k,...v]=l.split(':');if(k)obj[k.trim()]=v.join(':').trim().replace(/^["']|["']$/g,'');});
   return obj;
 }
 function toFM(obj){return`---\n${Object.entries(obj).map(([k,v])=>`${k}: "${String(v).replace(/"/g,"'")}"`).join('\n')}\n---\n`;}
-
 const folderMap={worksheets:'_worksheets',articles:'_articles',courses:'_courses',flipbooks:'_flipbooks',reviews:'_reviews',gallery:'_gallery'};
 
 async function loadPanel(name){
@@ -258,32 +249,6 @@ async function loadPanel(name){
   }).join('')}</div>`;
 }
 
-// Upload file to GitHub uploads/ folder
-async function uploadFile(file, progressEl, previewEl) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target.result.split(',')[1];
-      const filename = file.name.replace(/[^a-zA-Z0-9._-]/g, '-');
-      const path = `uploads/${filename}`;
-      if(progressEl) progressEl.style.display = 'block';
-      if(progressEl) progressEl.textContent = '⏳ Uploading...';
-      const existing = await ghGet(path);
-      const ok = await ghPutBinary(path, base64, existing?.sha);
-      if(ok) {
-        const url = `${BASE_URL}/uploads/${filename}`;
-        if(progressEl) progressEl.textContent = '✅ Uploaded!';
-        if(previewEl) previewEl.textContent = url;
-        resolve(url);
-      } else {
-        if(progressEl) progressEl.textContent = '❌ Upload failed. Check GitHub token.';
-        resolve('');
-      }
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
 const formDefs={
   worksheets:[
     {id:'title',label:'Title',type:'text'},
@@ -292,31 +257,31 @@ const formDefs={
     {id:'free',label:'Is Free?',type:'toggle'},
     {id:'description',label:'Description',type:'textarea'},
     {id:'tags',label:'Tags (comma separated)',type:'text'},
-    {id:'file',label:'PDF File',type:'fileupload',accept:'.pdf',placeholder:'Upload PDF or paste URL'},
+    {id:'file',label:'Worksheet File',type:'fileupload',accept:'.pdf,.png,.jpg,.jpeg'},
   ],
   articles:[
     {id:'title',label:'Title',type:'text'},
     {id:'date',label:'Date (e.g. 2025-03-01)',type:'text'},
     {id:'readtime',label:'Read Time (e.g. 5 min read)',type:'text'},
     {id:'summary',label:'Summary',type:'textarea'},
-    {id:'image',label:'Cover Image',type:'fileupload',accept:'image/*',placeholder:'Upload image or paste URL'},
+    {id:'image',label:'Cover Image',type:'fileupload',accept:'.png,.jpg,.jpeg'},
   ],
   courses:[
     {id:'title',label:'Title',type:'text'},
-    {id:'code',label:'Code (e.g. CRS-04)',type:'text'},
+    {id:'code',label:'Code',type:'text'},
     {id:'price',label:'Price',type:'text'},
     {id:'lessons',label:'Number of Lessons',type:'text'},
     {id:'duration',label:'Duration (e.g. 3 Hours)',type:'text'},
     {id:'description',label:'Description',type:'textarea'},
     {id:'video_url',label:'Video URL',type:'text'},
-    {id:'thumbnail',label:'Thumbnail Image',type:'fileupload',accept:'image/*',placeholder:'Upload image or paste URL'},
+    {id:'thumbnail',label:'Thumbnail',type:'fileupload',accept:'.png,.jpg,.jpeg'},
   ],
   flipbooks:[
     {id:'title',label:'Title',type:'text'},
-    {id:'tag',label:'Tag (e.g. Child Dev)',type:'text'},
+    {id:'tag',label:'Tag',type:'text'},
     {id:'description',label:'Description',type:'textarea'},
     {id:'url',label:'Flipbook URL',type:'text'},
-    {id:'image',label:'Cover Image',type:'fileupload',accept:'image/*',placeholder:'Upload image or paste URL'},
+    {id:'image',label:'Cover Image',type:'fileupload',accept:'.png,.jpg,.jpeg'},
   ],
   reviews:[
     {id:'name',label:'Reviewer Name',type:'text'},
@@ -327,7 +292,7 @@ const formDefs={
   ],
   gallery:[
     {id:'title',label:'Title',type:'text'},
-    {id:'image',label:'Image',type:'fileupload',accept:'image/*',placeholder:'Upload image or paste URL'},
+    {id:'image',label:'Image',type:'fileupload',accept:'.png,.jpg,.jpeg'},
     {id:'caption',label:'Caption',type:'text'},
   ],
 };
@@ -341,30 +306,36 @@ function editItem(type,encodedId){
 
 function renderForm(type,data){
   const isNew=!data._path;
-  document.getElementById('form-title').textContent=(isNew?'New ':'Edit ')+type.slice(0,-1).charAt(0).toUpperCase()+type.slice(1,-1).slice(1);
+  document.getElementById('form-title').textContent=(isNew?'New ':'Edit ')+type.charAt(0).toUpperCase()+type.slice(1,-1);
+  document.getElementById('form-back-btn').textContent='← Back to '+type.charAt(0).toUpperCase()+type.slice(1);
   let html='';
   formDefs[type].forEach(f=>{
     if(f.type==='textarea'){
       html+=`<div class="form-group"><label>${f.label}</label><textarea id="f-${f.id}">${data[f.id]||''}</textarea></div>`;
-    } else if(f.type==='toggle'){
+    }else if(f.type==='toggle'){
       const on=String(data[f.id]).toLowerCase()==='true';
       html+=`<div class="form-group"><label>${f.label}</label><div class="toggle-row"><button type="button" class="toggle ${on?'on':''}" id="f-${f.id}" onclick="this.classList.toggle('on')"></button><span>${on?'Yes':'No'}</span></div></div>`;
-    } else if(f.type==='select'){
+    }else if(f.type==='select'){
       html+=`<div class="form-group"><label>${f.label}</label><select id="f-${f.id}">${f.options.map(o=>`<option ${data[f.id]===o?'selected':''}>${o}</option>`).join('')}</select></div>`;
-    } else if(f.type==='fileupload'){
-      const current=data[f.id]||'';
-      html+=`<div class="form-group">
-        <label>${f.label}</label>
-        <div class="upload-box" onclick="document.getElementById('file-input-${f.id}').click()">
-          <input type="file" id="file-input-${f.id}" accept="${f.accept||'*'}" onchange="handleFileUpload('${f.id}',this)">
-          <div>📎 Click to upload ${f.accept==='.pdf'?'PDF':'image'}</div>
-          <button type="button" class="upload-btn">Choose File</button>
+    }else if(f.type==='fileupload'){
+      const cur=data[f.id]||'';
+      const isPDF=f.accept&&f.accept.includes('pdf');
+      const typeLabel=isPDF?'PDF, PNG, JPG':'PNG, JPG, JPEG';
+      const icon=isPDF?'📎':'🖼️';
+      const preview=cur&&cur.match(/\.(png|jpg|jpeg)$/i)?`<img src="${cur}" style="max-width:100%;max-height:120px;border-radius:8px;margin-top:8px;object-fit:cover;">`
+        :cur?`<div style="font-size:0.8rem;color:#555;margin-top:6px;word-break:break-all;">${icon} ${cur}</div>`:'';
+      html+=`<div class="form-group"><label>${f.label}</label>
+        <div style="border:2px dashed #c8e6c9;border-radius:8px;padding:1.25rem;text-align:center;background:#f9fdf9;cursor:pointer;" onclick="document.getElementById('fi-${f.id}').click()">
+          <input type="file" id="fi-${f.id}" accept="${f.accept||'*'}" style="display:none" onchange="handleUpload('${f.id}',this)">
+          <div style="font-size:1.5rem;">${icon}</div>
+          <div style="font-size:0.85rem;color:#666;margin-top:4px;">Click to upload <strong>${typeLabel}</strong></div>
+          <div style="font-size:0.75rem;color:var(--muted);">or paste URL below</div>
         </div>
-        <div class="upload-progress" id="upload-progress-${f.id}"></div>
-        <div class="file-preview" id="file-preview-${f.id}">${current}</div>
-        <input type="text" id="f-${f.id}" value="${current}" placeholder="${f.placeholder||''}" style="margin-top:0.5rem;">
+        <div id="up-prog-${f.id}" style="display:none;margin-top:6px;font-size:0.85rem;font-weight:500;"></div>
+        ${preview}
+        <input type="text" id="f-${f.id}" value="${cur}" placeholder="https://..." style="margin-top:8px;">
       </div>`;
-    } else {
+    }else{
       html+=`<div class="form-group"><label>${f.label}</label><input type="text" id="f-${f.id}" value="${data[f.id]||''}" placeholder="${f.placeholder||''}"></div>`;
     }
   });
@@ -378,21 +349,33 @@ function renderForm(type,data){
   document.getElementById('panel-form').classList.add('active');
 }
 
-async function handleFileUpload(fieldId, input) {
-  const file = input.files[0];
-  if(!file) return;
-  const progressEl = document.getElementById('upload-progress-'+fieldId);
-  const previewEl = document.getElementById('file-preview-'+fieldId);
-  const urlInput = document.getElementById('f-'+fieldId);
-  const url = await uploadFile(file, progressEl, previewEl);
-  if(url) urlInput.value = url;
+async function handleUpload(fieldId,input){
+  const file=input.files[0];if(!file)return;
+  const prog=document.getElementById('up-prog-'+fieldId);
+  const urlInput=document.getElementById('f-'+fieldId);
+  prog.style.display='block';prog.style.color='var(--sage)';prog.textContent='⏳ Uploading...';
+  const reader=new FileReader();
+  reader.onload=async(e)=>{
+    const base64=e.target.result.split(',')[1];
+    const filename=file.name.replace(/[^a-zA-Z0-9._-]/g,'-');
+    const path=`uploads/${filename}`;
+    const existing=await ghGet(path);
+    const ok=await ghPutBinary(path,base64,existing?.sha);
+    if(ok){
+      const url=`${BASE_URL}/uploads/${filename}`;
+      prog.textContent='✅ Uploaded!';prog.style.color='#2e7d32';
+      urlInput.value=url;
+    }else{
+      prog.textContent='❌ Failed. Check GitHub token.';prog.style.color='#e74c3c';
+    }
+  };
+  reader.readAsDataURL(file);
 }
 
 async function saveItem(type){
   const data={};
   formDefs[type].forEach(f=>{
-    const el=document.getElementById('f-'+f.id);
-    if(!el)return;
+    const el=document.getElementById('f-'+f.id);if(!el)return;
     data[f.id]=f.type==='toggle'?el.classList.contains('on')?'true':'false':el.value;
   });
   const slug=(data.title||'item').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
@@ -401,9 +384,7 @@ async function saveItem(type){
   if(ok){
     document.getElementById('form-save-msg').style.display='block';
     if(!editingItem){const f=await ghGet(path);if(f)editingItem={_path:path,_sha:f.sha};}
-  } else {
-    alert('Save failed! Go to 🔑 GitHub Token and check your token.');
-  }
+  }else{alert('Save failed! Go to 🔑 GitHub Token and check your token.');}
 }
 
 async function deleteItem(type){
